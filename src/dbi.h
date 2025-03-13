@@ -3,7 +3,7 @@
 
 #include <napi.h>
 #include <string>
-#include "../deps/libmdbx/mdbx.h"
+#include "mdbx_wrapper.h"
 #include "env.h"
 #include "txn.h"
 

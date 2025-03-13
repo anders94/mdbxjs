@@ -251,63 +251,58 @@ fi
 
 console.log('libmdbx build complete!');
 
-// Create header file with MDBX constants
-console.log('Creating libmdbx.h header files...');
+// Create wrapper header file that will include the actual mdbx.h
+console.log('Creating mdbx_wrapper.h header file...');
 
-// Create the header in the src directory
-const headerPath = path.join(__dirname, '..', 'src', 'libmdbx.h');
-const headerContent = `
-#ifndef MDBXJS_LIBMDBX_H
-#define MDBXJS_LIBMDBX_H
+// First, copy the mdbx.h file to a place we can reliably reference
+const sourceHeader = path.join(LIBMDBX_DIR, 'mdbx.h');
+const destHeader = path.join(__dirname, '..', 'src', 'mdbx.h');
 
-#include "${path.join(LIBMDBX_DIR, 'mdbx.h').replace(/\\/g, '/')}"
-
-#endif // MDBXJS_LIBMDBX_H
-`;
-fs.writeFileSync(headerPath, headerContent);
-
-// Copy the mdbx.h directly to the src directory
-console.log('Copying mdbx.h to src directory...');
-try {
-  const mdbxHeader = path.join(LIBMDBX_DIR, 'mdbx.h');
-  const targetPath = path.join(__dirname, '..', 'src', 'mdbx.h');
-  
-  // Remove existing file if it exists
-  if (fs.existsSync(targetPath)) {
-    fs.unlinkSync(targetPath);
-  }
-  
-  // Copy the header file
-  fs.copyFileSync(mdbxHeader, targetPath);
-  console.log(`Header copied from ${mdbxHeader} to ${targetPath}`);
-  
-  // Also copy any other necessary headers
-  try {
-    const mdbxHeadersDir = path.join(LIBMDBX_DIR, 'mdbx');
-    if (fs.existsSync(mdbxHeadersDir) && fs.statSync(mdbxHeadersDir).isDirectory()) {
-      const srcMdbxDir = path.join(__dirname, '..', 'src', 'mdbx');
-      if (!fs.existsSync(srcMdbxDir)) {
-        fs.mkdirSync(srcMdbxDir, { recursive: true });
-      }
-      
-      // Copy all header files from mdbx directory
-      const headerFiles = fs.readdirSync(mdbxHeadersDir)
-        .filter(file => file.endsWith('.h'));
-      
-      headerFiles.forEach(file => {
-        const sourcePath = path.join(mdbxHeadersDir, file);
-        const targetHeaderPath = path.join(srcMdbxDir, file);
-        fs.copyFileSync(sourcePath, targetHeaderPath);
-        console.log(`Additional header ${file} copied`);
-      });
-    }
-  } catch (additionalError) {
-    console.error(`Warning: Could not copy additional headers: ${additionalError.message}`);
-  }
-} catch (error) {
-  console.error(`ERROR: Could not copy mdbx.h header: ${error.message}`);
-  console.error('This will cause the build to fail. Please check file permissions and paths.');
+// Make sure the source header exists
+if (!fs.existsSync(sourceHeader)) {
+  console.error(`ERROR: Source header file ${sourceHeader} does not exist!`);
   process.exit(1);
+}
+
+// Copy the mdbx.h file to src directory
+fs.copyFileSync(sourceHeader, destHeader);
+console.log(`Copied header from ${sourceHeader} to ${destHeader}`);
+
+// Now create a wrapper header that includes the local copy
+const wrapperPath = path.join(__dirname, '..', 'src', 'mdbx_wrapper.h');
+const wrapperContent = `
+#ifndef MDBXJS_MDBX_WRAPPER_H
+#define MDBXJS_MDBX_WRAPPER_H
+
+#include "mdbx.h"  // Using the local copy in the src directory
+
+#endif // MDBXJS_MDBX_WRAPPER_H
+`;
+fs.writeFileSync(wrapperPath, wrapperContent);
+console.log(`Created wrapper header at ${wrapperPath}`);
+
+// Also copy any other necessary headers
+try {
+  const mdbxHeadersDir = path.join(LIBMDBX_DIR, 'mdbx');
+  if (fs.existsSync(mdbxHeadersDir) && fs.statSync(mdbxHeadersDir).isDirectory()) {
+    const srcMdbxDir = path.join(__dirname, '..', 'src', 'mdbx');
+    if (!fs.existsSync(srcMdbxDir)) {
+      fs.mkdirSync(srcMdbxDir, { recursive: true });
+    }
+    
+    // Copy all header files from mdbx directory
+    const headerFiles = fs.readdirSync(mdbxHeadersDir)
+      .filter(file => file.endsWith('.h'));
+    
+    headerFiles.forEach(file => {
+      const sourcePath = path.join(mdbxHeadersDir, file);
+      const targetHeaderPath = path.join(srcMdbxDir, file);
+      fs.copyFileSync(sourcePath, targetHeaderPath);
+      console.log(`Additional header ${file} copied`);
+    });
+  }
+} catch (additionalError) {
+  console.error(`Warning: Could not copy additional headers: ${additionalError.message}`);
 }
 
 // For any platform, make sure we have the required library files
@@ -403,7 +398,7 @@ console.log(`Library file: ${path.join(buildDir, libFile)}`);
 const criticalFiles = [
   { path: path.join(buildDir, libFile), name: 'Library file' },
   { path: path.join(__dirname, '..', 'src', 'mdbx.h'), name: 'mdbx.h header' },
-  { path: path.join(__dirname, '..', 'src', 'libmdbx.h'), name: 'libmdbx.h header' }
+  { path: path.join(__dirname, '..', 'src', 'mdbx_wrapper.h'), name: 'mdbx_wrapper.h header' }
 ];
 
 let missingFiles = criticalFiles.filter(file => !fs.existsSync(file.path));
