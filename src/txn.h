@@ -2,7 +2,7 @@
 #define MDBX_TXN_H
 
 #include <napi.h>
-#include "mdbx.h"
+#include "mdbx_wrapper.h"
 #include "env.h"
 
 class MdbxTxn : public Napi::ObjectWrap<MdbxTxn> {

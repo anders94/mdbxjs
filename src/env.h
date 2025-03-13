@@ -3,7 +3,7 @@
 
 #include <napi.h>
 #include <string>
-#include "mdbx.h"
+#include "mdbx_wrapper.h"
 
 class MdbxEnv : public Napi::ObjectWrap<MdbxEnv> {
  public:
