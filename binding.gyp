@@ -19,7 +19,7 @@
           "libraries": ["deps/libmdbx/build/libmdbx.lib"]
         }],
         ["OS=='linux'", {
-          "libraries": ["-Ldeps/libmdbx/build", "-lmdbx"],
+          "libraries": ["../deps/libmdbx/build/libmdbx.so"],
           "ldflags": ["-Wl,-rpath=\\$$ORIGIN/../../deps/libmdbx/build"]
         }],
         ["OS=='mac'", {

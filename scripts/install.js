@@ -228,6 +228,11 @@ cd "${LIBMDBX_DIR}"
 mkdir -p "${buildDir}"
 echo "Building libmdbx with direct compilation..."
 cc -shared -o "${path.join(buildDir, process.platform === 'darwin' ? 'libmdbx.dylib' : 'libmdbx.so')}" -fPIC -DMDBX_BUILD_SHARED_LIBRARY=1 ${process.platform === 'linux' ? '-DMDBX_CONFIG_MANUAL_TLS_CALLBACK=0' : ''} $(find . -maxdepth 1 -name "*.c" -not -path "*dist*" -not -path "*test*") ${process.platform === 'linux' ? '-lpthread' : ''}
+
+# Create a symlink to help the linker find it if Linux
+if [ "$(uname)" = "Linux" ]; then
+  ln -sf "${path.join(buildDir, 'libmdbx.so')}" "${path.join(LIBMDBX_DIR, 'libmdbx.so')}"
+fi
 `;
       
       const scriptPath = path.join(buildDir, 'build_simple.sh');
@@ -271,7 +276,14 @@ mkdir -p "${buildDir}"
 echo "Building libmdbx with fallback direct compilation..."
 ${process.platform === 'win32' 
   ? 'echo "Windows build requires MSVC, please install the library manually"' 
-  : `cc -shared -o "${path.join(buildDir, libFile)}" -fPIC -DMDBX_BUILD_SHARED_LIBRARY=1 ${process.platform === 'linux' ? '-DMDBX_CONFIG_MANUAL_TLS_CALLBACK=0' : ''} $(find . -maxdepth 1 -name "*.c" -not -path "*dist*" -not -path "*test*") ${process.platform === 'linux' ? '-lpthread' : ''}`}
+  : `cc -shared -o "${path.join(buildDir, libFile)}" -fPIC -DMDBX_BUILD_SHARED_LIBRARY=1 ${process.platform === 'linux' ? '-DMDBX_CONFIG_MANUAL_TLS_CALLBACK=0' : ''} $(find . -maxdepth 1 -name "*.c" -not -path "*dist*" -not -path "*test*") ${process.platform === 'linux' ? '-lpthread' : ''}
+
+# Create symlinks to help the linker find it if Linux
+if [ "$(uname)" = "Linux" ]; then
+  echo "Creating symlinks for Linux..."
+  ln -sf "${path.join(buildDir, 'libmdbx.so')}" "${path.join(LIBMDBX_DIR, 'libmdbx.so')}"
+  ln -sf "${path.join(buildDir, 'libmdbx.so')}" "$(pwd)/libmdbx.so"
+fi`}
 `;
   
   const scriptPath = path.join(buildDir, 'build_simple.sh');
@@ -285,6 +297,50 @@ ${process.platform === 'win32'
   } else {
     console.log('Windows build requires MSVC, please install the library manually');
   }
+}
+
+// Final verification of library existence
+if (!fs.existsSync(path.join(buildDir, libFile))) {
+  console.error(`ERROR: Library file ${libFile} still not found after build attempts.`);
+  console.error(`Expected library at: ${path.join(buildDir, libFile)}`);
+  console.error('The module will likely fail to build. Please check your build environment.');
+  
+  // On Linux, try again with even simpler approach that doesn't rely on find
+  if (process.platform === 'linux') {
+    console.log('Attempting one final build with hardcoded source files...');
+    
+    // Create an extremely simple build script with explicit source files
+    const lastResortScript = `#!/bin/bash
+cd "${LIBMDBX_DIR}"
+mkdir -p "${buildDir}"
+echo "Building libmdbx with hardcoded source files..."
+cc -shared -o "${path.join(buildDir, 'libmdbx.so')}" -fPIC \\
+  -DMDBX_BUILD_SHARED_LIBRARY=1 \\
+  -DMDBX_CONFIG_MANUAL_TLS_CALLBACK=0 \\
+  mdbx.c \\
+  -lpthread
+
+# Create a symlink to help the linker find it
+ln -sf "${path.join(buildDir, 'libmdbx.so')}" "${path.join(LIBMDBX_DIR, 'libmdbx.so')}"
+`;
+    
+    const finalScriptPath = path.join(buildDir, 'last_resort.sh');
+    fs.writeFileSync(finalScriptPath, lastResortScript);
+    fs.chmodSync(finalScriptPath, 0o755);
+    
+    try {
+      runCommand('bash', [finalScriptPath], null, true);
+      if (fs.existsSync(path.join(buildDir, 'libmdbx.so'))) {
+        console.log('Last resort build succeeded!');
+      } else {
+        console.error('Last resort build also failed.');
+      }
+    } catch (error) {
+      console.error(`Last resort build failed: ${error.message}`);
+    }
+  }
+  
+  process.exit(1);
 }
 
 console.log('Installation completed successfully!');
