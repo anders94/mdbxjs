@@ -25,7 +25,7 @@
         ["OS=='mac'", {
           "libraries": ["../deps/libmdbx/build/libmdbx.dylib"],
           "xcode_settings": {
-            "OTHER_LDFLAGS": ["-Wl,-rpath,@loader_path/../deps/libmdbx/build"]
+            "OTHER_LDFLAGS": ["-Wl,-rpath,@loader_path/../../deps/libmdbx/build"]
           }
         }]
       ],
