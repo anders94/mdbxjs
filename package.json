@@ -7,6 +7,7 @@
   "scripts": {
     "preinstall": "node scripts/install.js",
     "install": "node-gyp rebuild",
+    "prepare": "node scripts/install.js && node-gyp rebuild",
     "test": "jest",
     "build": "node-gyp rebuild",
     "lint": "eslint .",

@@ -15,7 +15,11 @@ A Node.js binding for [libmdbx](https://github.com/erthink/libmdbx) - a fast, co
 ## Installation
 
 ```bash
+# With npm
 npm install mdbxjs
+
+# With yarn
+yarn add mdbxjs
 ```
 
 ### Prerequisites
