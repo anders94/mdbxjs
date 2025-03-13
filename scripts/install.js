@@ -36,22 +36,31 @@ function runCommand(command, args, cwd) {
 
 // Check if libmdbx directory already exists
 if (fs.existsSync(LIBMDBX_DIR)) {
-  console.log('libmdbx directory already exists, checking if it needs updating...');
+  console.log('libmdbx directory already exists');
   
-  // Pull latest changes
-  runCommand('git', ['fetch', 'origin'], LIBMDBX_DIR);
+  // Check if it's a git repository - if not, it's likely from an npm package
+  const isGitRepo = fs.existsSync(path.join(LIBMDBX_DIR, '.git'));
   
-  // Check if we need to checkout a different version
-  const currentTag = spawnSync('git', ['describe', '--tags'], {
-    cwd: LIBMDBX_DIR,
-    encoding: 'utf8'
-  }).stdout.trim();
-  
-  if (currentTag !== `v${LIBMDBX_VERSION}`) {
-    console.log(`Updating libmdbx from ${currentTag} to v${LIBMDBX_VERSION}...`);
-    runCommand('git', ['checkout', `v${LIBMDBX_VERSION}`], LIBMDBX_DIR);
+  if (isGitRepo) {
+    console.log('libmdbx is a git repository, checking if it needs updating...');
+    
+    // Pull latest changes
+    runCommand('git', ['fetch', 'origin'], LIBMDBX_DIR);
+    
+    // Check if we need to checkout a different version
+    const currentTag = spawnSync('git', ['describe', '--tags'], {
+      cwd: LIBMDBX_DIR,
+      encoding: 'utf8'
+    }).stdout.trim();
+    
+    if (currentTag !== `v${LIBMDBX_VERSION}`) {
+      console.log(`Updating libmdbx from ${currentTag} to v${LIBMDBX_VERSION}...`);
+      runCommand('git', ['checkout', `v${LIBMDBX_VERSION}`], LIBMDBX_DIR);
+    } else {
+      console.log(`libmdbx is already at version ${LIBMDBX_VERSION}`);
+    }
   } else {
-    console.log(`libmdbx is already at version ${LIBMDBX_VERSION}`);
+    console.log('Using pre-installed libmdbx from the package');
   }
 } else {
   // Clone the repository
@@ -61,21 +70,38 @@ if (fs.existsSync(LIBMDBX_DIR)) {
 
 // Create build directory
 const buildDir = path.join(LIBMDBX_DIR, 'build');
+
+// Always clean build directory first when it's from a package
+if (!fs.existsSync(path.join(LIBMDBX_DIR, '.git'))) {
+  console.log('Cleaning build directory from package to prevent path conflicts...');
+  if (fs.existsSync(buildDir)) {
+    fs.rmSync(buildDir, { recursive: true, force: true });
+  }
+}
+
 if (!fs.existsSync(buildDir)) {
   fs.mkdirSync(buildDir, { recursive: true });
 }
 
-// Build libmdbx based on the platform
-if (process.platform === 'win32') {
-  // Windows build
-  console.log('Building libmdbx on Windows...');
-  runCommand('cmake', ['..', '-A', process.arch === 'x64' ? 'x64' : 'Win32'], buildDir);
-  runCommand('cmake', ['--build', '.', '--config', 'Release'], buildDir);
+// Check if build directory contains compiled library
+const hasBuildArtifacts = fs.existsSync(path.join(buildDir, process.platform === 'win32' ? 'libmdbx.lib' : 'libmdbx.dylib')) ||
+                         fs.existsSync(path.join(buildDir, 'libmdbx.so'));
+                         
+if (!hasBuildArtifacts) {
+  // Build libmdbx based on the platform
+  if (process.platform === 'win32') {
+    // Windows build
+    console.log('Building libmdbx on Windows...');
+    runCommand('cmake', ['..', '-A', process.arch === 'x64' ? 'x64' : 'Win32'], buildDir);
+    runCommand('cmake', ['--build', '.', '--config', 'Release'], buildDir);
+  } else {
+    // Unix build (Linux, macOS, etc.)
+    console.log(`Building libmdbx on ${process.platform}...`);
+    runCommand('cmake', ['..'], buildDir);
+    runCommand('make', [], buildDir);
+  }
 } else {
-  // Unix build (Linux, macOS, etc.)
-  console.log(`Building libmdbx on ${process.platform}...`);
-  runCommand('cmake', ['..'], buildDir);
-  runCommand('make', [], buildDir);
+  console.log('libmdbx build artifacts already exist, skipping build step');
 }
 
 console.log('libmdbx build complete!');

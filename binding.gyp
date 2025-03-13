@@ -19,10 +19,14 @@
           "libraries": ["deps/libmdbx/build/libmdbx.lib"]
         }],
         ["OS=='linux'", {
-          "libraries": ["-Ldeps/libmdbx/build", "-lmdbx"]
+          "libraries": ["-Ldeps/libmdbx/build", "-lmdbx"],
+          "ldflags": ["-Wl,-rpath,'$$ORIGIN/../deps/libmdbx/build'"]
         }],
         ["OS=='mac'", {
-          "libraries": ["../deps/libmdbx/build/libmdbx.dylib"]
+          "libraries": ["../deps/libmdbx/build/libmdbx.dylib"],
+          "xcode_settings": {
+            "OTHER_LDFLAGS": ["-Wl,-rpath,@loader_path/../deps/libmdbx/build"]
+          }
         }]
       ],
       "cflags!": [ "-fno-exceptions" ],

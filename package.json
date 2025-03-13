@@ -1,6 +1,6 @@
 {
   "name": "mdbxjs",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Node.js binding for libmdbx - a fast, compact, embeddable key-value database",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -50,6 +50,13 @@
     "lib": "lib",
     "test": "test"
   },
+  "files": [
+    "lib/",
+    "src/",
+    "scripts/",
+    "deps/",
+    "binding.gyp"
+  ],
   "bugs": {
     "url": "https://github.com/anders94/mdbxjs/issues"
   },
