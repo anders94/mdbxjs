@@ -11,15 +11,10 @@
       ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")",
-        "deps/libmdbx",
-        "src",
-        "."
+        "<(module_root_dir)/deps/libmdbx",
+        "<(module_root_dir)/deps/libmdbx/build/include",
+        "<(module_root_dir)/src"
       ],
-      "direct_dependent_settings": {
-        "include_dirs": [
-          "src"
-        ]
-      },
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
       "conditions": [
         ["OS=='win'", {

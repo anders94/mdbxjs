@@ -251,30 +251,41 @@ fi
 
 console.log('libmdbx build complete!');
 
-// Make sure the mdbx.h file in the src directory includes the correct path
-console.log('Creating header file for mdbx.h...');
+// Verify the actual libmdbx header exists and copy it to build/include if needed
+console.log('Verifying mdbx.h header file availability...');
 
-// Create a header file in src directory that points to the actual libmdbx header
-const headerPath = path.join(__dirname, '..', 'src', 'mdbx.h');
-const headerContent = `#ifndef MDBXJS_MDBX_H
-#define MDBXJS_MDBX_H
-
-// Include the actual libmdbx.h
-#include "../deps/libmdbx/mdbx.h"
-
-#endif // MDBXJS_MDBX_H
-`;
-
-// Write the header file
-fs.writeFileSync(headerPath, headerContent);
-console.log(`Created header file at ${headerPath}`);
-
-// Verify the actual libmdbx header exists
 const sourceHeader = path.join(LIBMDBX_DIR, 'mdbx.h');
 if (!fs.existsSync(sourceHeader)) {
   console.error(`ERROR: Source header file ${sourceHeader} does not exist!`);
   process.exit(1);
 }
+
+// Create an include directory in the build directory
+const includeDir = path.join(buildDir, 'include');
+if (!fs.existsSync(includeDir)) {
+  fs.mkdirSync(includeDir, { recursive: true });
+}
+
+// Copy the header to the include directory
+const includeHeader = path.join(includeDir, 'mdbx.h');
+fs.copyFileSync(sourceHeader, includeHeader);
+console.log(`Copied header to ${includeHeader}`);
+
+// Also ensure our wrapper header exists
+console.log('Ensuring wrapper header exists...');
+const wrapperPath = path.join(__dirname, '..', 'src', 'mdbx.h');
+const wrapperContent = `#ifndef MDBXJS_MDBX_H
+#define MDBXJS_MDBX_H
+
+// Include the actual libmdbx.h
+#include <mdbx.h> // Using the one in include path
+
+#endif // MDBXJS_MDBX_H
+`;
+
+// Write the wrapper header
+fs.writeFileSync(wrapperPath, wrapperContent);
+console.log(`Created wrapper header at ${wrapperPath}`);
 
 // Also copy any other necessary headers
 try {
@@ -392,8 +403,9 @@ console.log(`Library file: ${path.join(buildDir, libFile)}`);
 // Make a final verification that critical files exist
 const criticalFiles = [
   { path: path.join(buildDir, libFile), name: 'Library file' },
-  { path: path.join(__dirname, '..', 'src', 'mdbx.h'), name: 'mdbx.h header' },
-  { path: path.join(LIBMDBX_DIR, 'mdbx.h'), name: 'libmdbx mdbx.h header' }
+  { path: path.join(__dirname, '..', 'src', 'mdbx.h'), name: 'mdbx.h wrapper header' },
+  { path: path.join(LIBMDBX_DIR, 'mdbx.h'), name: 'libmdbx mdbx.h source header' },
+  { path: path.join(buildDir, 'include', 'mdbx.h'), name: 'mdbx.h in build/include' }
 ];
 
 let missingFiles = criticalFiles.filter(file => !fs.existsSync(file.path));
