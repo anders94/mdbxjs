@@ -251,35 +251,30 @@ fi
 
 console.log('libmdbx build complete!');
 
-// Create wrapper header file that will include the actual mdbx.h
-console.log('Creating mdbx_wrapper.h header file...');
+// Make sure the mdbx.h file in the src directory includes the correct path
+console.log('Creating header file for mdbx.h...');
 
-// First, copy the mdbx.h file to a place we can reliably reference
+// Create a header file in src directory that points to the actual libmdbx header
+const headerPath = path.join(__dirname, '..', 'src', 'mdbx.h');
+const headerContent = `#ifndef MDBXJS_MDBX_H
+#define MDBXJS_MDBX_H
+
+// Include the actual libmdbx.h
+#include "../deps/libmdbx/mdbx.h"
+
+#endif // MDBXJS_MDBX_H
+`;
+
+// Write the header file
+fs.writeFileSync(headerPath, headerContent);
+console.log(`Created header file at ${headerPath}`);
+
+// Verify the actual libmdbx header exists
 const sourceHeader = path.join(LIBMDBX_DIR, 'mdbx.h');
-const destHeader = path.join(__dirname, '..', 'src', 'mdbx.h');
-
-// Make sure the source header exists
 if (!fs.existsSync(sourceHeader)) {
   console.error(`ERROR: Source header file ${sourceHeader} does not exist!`);
   process.exit(1);
 }
-
-// Copy the mdbx.h file to src directory
-fs.copyFileSync(sourceHeader, destHeader);
-console.log(`Copied header from ${sourceHeader} to ${destHeader}`);
-
-// Now create a wrapper header that includes the local copy
-const wrapperPath = path.join(__dirname, '..', 'src', 'mdbx_wrapper.h');
-const wrapperContent = `
-#ifndef MDBXJS_MDBX_WRAPPER_H
-#define MDBXJS_MDBX_WRAPPER_H
-
-#include "mdbx.h"  // Using the local copy in the src directory
-
-#endif // MDBXJS_MDBX_WRAPPER_H
-`;
-fs.writeFileSync(wrapperPath, wrapperContent);
-console.log(`Created wrapper header at ${wrapperPath}`);
 
 // Also copy any other necessary headers
 try {
@@ -398,7 +393,7 @@ console.log(`Library file: ${path.join(buildDir, libFile)}`);
 const criticalFiles = [
   { path: path.join(buildDir, libFile), name: 'Library file' },
   { path: path.join(__dirname, '..', 'src', 'mdbx.h'), name: 'mdbx.h header' },
-  { path: path.join(__dirname, '..', 'src', 'mdbx_wrapper.h'), name: 'mdbx_wrapper.h header' }
+  { path: path.join(LIBMDBX_DIR, 'mdbx.h'), name: 'libmdbx mdbx.h header' }
 ];
 
 let missingFiles = criticalFiles.filter(file => !fs.existsSync(file.path));

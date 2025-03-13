@@ -12,8 +12,14 @@
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")",
         "deps/libmdbx",
-        "src"
+        "src",
+        "."
       ],
+      "direct_dependent_settings": {
+        "include_dirs": [
+          "src"
+        ]
+      },
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
       "conditions": [
         ["OS=='win'", {
