@@ -38,29 +38,71 @@ function runCommand(command, args, cwd) {
 if (fs.existsSync(LIBMDBX_DIR)) {
   console.log('libmdbx directory already exists');
   
-  // Check if it's a git repository - if not, it's likely from an npm package
+  // Check if it's a git repository - if not, it's likely from an npm package 
   const isGitRepo = fs.existsSync(path.join(LIBMDBX_DIR, '.git'));
   
   if (isGitRepo) {
     console.log('libmdbx is a git repository, checking if it needs updating...');
     
-    // Pull latest changes
-    runCommand('git', ['fetch', 'origin'], LIBMDBX_DIR);
-    
-    // Check if we need to checkout a different version
-    const currentTag = spawnSync('git', ['describe', '--tags'], {
-      cwd: LIBMDBX_DIR,
-      encoding: 'utf8'
-    }).stdout.trim();
-    
-    if (currentTag !== `v${LIBMDBX_VERSION}`) {
-      console.log(`Updating libmdbx from ${currentTag} to v${LIBMDBX_VERSION}...`);
-      runCommand('git', ['checkout', `v${LIBMDBX_VERSION}`], LIBMDBX_DIR);
+    // If it's from a package and has a .git placeholder, clone the real repo
+    if (!fs.existsSync(path.join(LIBMDBX_DIR, '.git', 'config'))) {
+      console.log('Package contains a placeholder .git directory, cloning actual repository...');
+      
+      // Save the original files we need to keep
+      const tempDir = path.join(os.tmpdir(), `libmdbx-backup-${Date.now()}`);
+      fs.mkdirSync(tempDir, { recursive: true });
+      if (fs.existsSync(path.join(LIBMDBX_DIR, 'build'))) {
+        fs.renameSync(path.join(LIBMDBX_DIR, 'build'), path.join(tempDir, 'build'));
+      }
+      
+      // Remove everything except backups
+      fs.rmSync(LIBMDBX_DIR, { recursive: true, force: true });
+      
+      // Clone the actual repository
+      console.log(`Cloning libmdbx repository (version ${LIBMDBX_VERSION})...`);
+      runCommand('git', ['clone', '--branch', `v${LIBMDBX_VERSION}`, '--depth', '1', LIBMDBX_REPO, LIBMDBX_DIR]);
+      
+      // Restore the files we backed up
+      if (fs.existsSync(path.join(tempDir, 'build'))) {
+        if (!fs.existsSync(path.join(LIBMDBX_DIR, 'build'))) {
+          fs.mkdirSync(path.join(LIBMDBX_DIR, 'build'), { recursive: true });
+        }
+        fs.renameSync(path.join(tempDir, 'build'), path.join(LIBMDBX_DIR, 'build'));
+      }
+      
+      // Cleanup
+      fs.rmSync(tempDir, { recursive: true, force: true });
     } else {
-      console.log(`libmdbx is already at version ${LIBMDBX_VERSION}`);
+      // It's a real git repo, handle normally
+      // Pull latest changes
+      runCommand('git', ['fetch', 'origin'], LIBMDBX_DIR);
+      
+      // Check if we need to checkout a different version
+      try {
+        const currentTag = spawnSync('git', ['describe', '--tags'], {
+          cwd: LIBMDBX_DIR,
+          encoding: 'utf8'
+        }).stdout.trim();
+        
+        if (currentTag !== `v${LIBMDBX_VERSION}`) {
+          console.log(`Updating libmdbx from ${currentTag} to v${LIBMDBX_VERSION}...`);
+          runCommand('git', ['checkout', `v${LIBMDBX_VERSION}`], LIBMDBX_DIR);
+        } else {
+          console.log(`libmdbx is already at version ${LIBMDBX_VERSION}`);
+        }
+      } catch (error) {
+        console.log(`Error checking git tags: ${error.message}, forcing checkout of v${LIBMDBX_VERSION}...`);
+        runCommand('git', ['checkout', `v${LIBMDBX_VERSION}`], LIBMDBX_DIR);
+      }
     }
   } else {
     console.log('Using pre-installed libmdbx from the package');
+    
+    // For non-git packages, create VERSION.txt to make it look like an amalgamated source
+    if (!fs.existsSync(path.join(LIBMDBX_DIR, 'VERSION.txt'))) {
+      console.log('Creating VERSION.txt for amalgamated build compatibility...');
+      fs.writeFileSync(path.join(LIBMDBX_DIR, 'VERSION.txt'), `v${LIBMDBX_VERSION}\n`);
+    }
   }
 } else {
   // Clone the repository

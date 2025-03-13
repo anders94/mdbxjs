@@ -43,3 +43,6 @@ yarn-error.log*
 
 # Optional: Log files
 *.log
+
+# Deploy files
+/*.tgz
