@@ -1,0 +1,45 @@
+# Dependencies
+/node_modules
+/deps
+
+# Build files
+/build
+/lib/*.js.map
+/dist
+
+# Test files
+/coverage
+/.nyc_output
+
+# Generated files
+/src/libmdbx.h
+
+# Environment files
+.env
+.env.local
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database files created by examples
+/mdbx-data
+/mdbx-advanced
+/mdbx-crud
+/mdbx-transactions
+/mdbx-queue-example
+
+# Optional: Log files
+*.log

@@ -1,0 +1,35 @@
+language: node_js
+
+node_js:
+  - 14
+  - 16
+  - 18
+
+os:
+  - linux
+  - osx
+
+addons:
+  apt:
+    packages:
+      - cmake
+      - build-essential
+  homebrew:
+    packages:
+      - cmake
+
+cache:
+  directories:
+    - node_modules
+    - $HOME/.npm
+    - deps/libmdbx/build
+
+before_install:
+  - npm install -g npm@latest
+
+script:
+  - npm run build
+  - npm test
+
+notifications:
+  email: false
