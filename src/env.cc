@@ -54,7 +54,7 @@ Napi::Value MdbxEnv::Open(const Napi::CallbackInfo& info) {
 
   Napi::Object options = info[0].As<Napi::Object>();
   std::string path = options.Has("path") ? 
-    std::string(options.Get("path").As<Napi::String>()) : "./mdbx-data";
+    std::string(options.Get("path").As<Napi::String>()) : "./mdbxjs-data";
   
   uint64_t mapSize = options.Has("mapSize") ? 
     options.Get("mapSize").ToNumber().Int64Value() : 10ULL * 1024ULL * 1024ULL * 1024ULL;

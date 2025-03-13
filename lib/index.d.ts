@@ -1,4 +1,4 @@
-declare module 'mdbx' {
+declare module 'mdbxjs' {
   export enum EnvFlags {
     NOSUBDIR = 0x4000,
     NOSYNC = 0x10000,

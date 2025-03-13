@@ -85,12 +85,12 @@ console.log('Creating mdbx.h header file...');
 
 const headerPath = path.join(__dirname, '..', 'src', 'libmdbx.h');
 fs.writeFileSync(headerPath, `
-#ifndef MDBX_LIBMDBX_H
-#define MDBX_LIBMDBX_H
+#ifndef MDBXJS_LIBMDBX_H
+#define MDBXJS_LIBMDBX_H
 
 #include "${path.join(LIBMDBX_DIR, 'mdbx.h').replace(/\\/g, '/')}"
 
-#endif // MDBX_LIBMDBX_H
+#endif // MDBXJS_LIBMDBX_H
 `);
 
 console.log('Installation completed successfully!');

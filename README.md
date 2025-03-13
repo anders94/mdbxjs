@@ -1,4 +1,4 @@
-# mdbx
+# mdbxjs
 
 A Node.js binding for [libmdbx](https://github.com/erthink/libmdbx) - a fast, compact, embeddable key-value database.
 
@@ -15,7 +15,7 @@ A Node.js binding for [libmdbx](https://github.com/erthink/libmdbx) - a fast, co
 ## Installation
 
 ```bash
-npm install mdbx
+npm install mdbxjs
 ```
 
 ### Prerequisites
@@ -50,15 +50,15 @@ brew install cmake
 If you want to build from source:
 
 ```bash
-git clone https://github.com/anders94/mdbx.git
-cd mdbx
+git clone https://github.com/anders94/mdbxjs.git
+cd mdbxjs
 npm install
 ```
 
 ## Simple Usage
 
 ```javascript
-const mdbx = require('mdbx');
+const mdbx = require('mdbxjs');
 
 // Open database with default options
 const env = mdbx.open('./my-data');
@@ -91,7 +91,7 @@ env.close();
 ## Advanced Usage
 
 ```javascript
-const mdbx = require('mdbx');
+const mdbx = require('mdbxjs');
 const { EnvFlags, DatabaseFlags, WriteFlags, TransactionMode } = mdbx;
 
 // Open environment with specific options
@@ -163,7 +163,7 @@ Creates a new environment object.
 Opens the environment with the given options.
 
 Options:
-- `path`: Path to database directory (default: './mdbx-data')
+- `path`: Path to database directory (default: './mdbxjs-data')
 - `mapSize`: Maximum size of the memory map (default: 10GB)
 - `maxDbs`: Maximum number of databases (default: 10)
 - `maxReaders`: Maximum number of reader slots (default: 126)

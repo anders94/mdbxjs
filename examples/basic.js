@@ -2,11 +2,11 @@
 
 const mdbx = require('../lib');
 
-// This example demonstrates basic usage of the mdbx package
+// This example demonstrates basic usage of the mdbxjs package
 
 // Open an environment with default options
 console.log('Opening environment...');
-const env = mdbx.open('./mdbx-data');
+const env = mdbx.open('./mdbxjs-data');
 
 // Create a collection with the simplified API
 console.log('Creating users collection...');

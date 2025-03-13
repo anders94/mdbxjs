@@ -22,7 +22,7 @@ afterAll(() => {
   }
 });
 
-describe('Basic MDBX operations', () => {
+describe('Basic MDBXJS operations', () => {
   let env;
   
   beforeEach(() => {
@@ -136,7 +136,7 @@ describe('Basic MDBX operations', () => {
   });
 });
 
-describe('Advanced MDBX operations', () => {
+describe('Advanced MDBXJS operations', () => {
   let env;
   
   beforeEach(() => {
