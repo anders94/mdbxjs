@@ -266,41 +266,48 @@ const headerContent = `
 `;
 fs.writeFileSync(headerPath, headerContent);
 
-// Also create a symbolic link to the actual mdbx.h in the src directory
-console.log('Creating symbolic link to mdbx.h...');
+// Copy the mdbx.h directly to the src directory
+console.log('Copying mdbx.h to src directory...');
 try {
   const mdbxHeader = path.join(LIBMDBX_DIR, 'mdbx.h');
-  const symLinkPath = path.join(__dirname, '..', 'src', 'mdbx.h');
+  const targetPath = path.join(__dirname, '..', 'src', 'mdbx.h');
   
   // Remove existing file if it exists
-  if (fs.existsSync(symLinkPath)) {
-    fs.unlinkSync(symLinkPath);
+  if (fs.existsSync(targetPath)) {
+    fs.unlinkSync(targetPath);
   }
   
-  if (process.platform === 'win32') {
-    // On Windows, copy the file instead of symlink (symlinks require admin rights)
-    fs.copyFileSync(mdbxHeader, symLinkPath);
-  } else {
-    // Create a relative symlink
-    const relPath = path.relative(path.dirname(symLinkPath), mdbxHeader);
-    fs.symlinkSync(relPath, symLinkPath);
-  }
+  // Copy the header file
+  fs.copyFileSync(mdbxHeader, targetPath);
+  console.log(`Header copied from ${mdbxHeader} to ${targetPath}`);
   
-  console.log('Header symlink created successfully');
-} catch (error) {
-  console.error(`Warning: Could not create header symlink: ${error.message}`);
-  console.log('Will copy the header instead...');
-  
+  // Also copy any other necessary headers
   try {
-    // As a fallback, copy the header file
-    fs.copyFileSync(
-      path.join(LIBMDBX_DIR, 'mdbx.h'),
-      path.join(__dirname, '..', 'src', 'mdbx.h')
-    );
-    console.log('Header copied successfully');
-  } catch (copyError) {
-    console.error(`Warning: Could not copy header: ${copyError.message}`);
+    const mdbxHeadersDir = path.join(LIBMDBX_DIR, 'mdbx');
+    if (fs.existsSync(mdbxHeadersDir) && fs.statSync(mdbxHeadersDir).isDirectory()) {
+      const srcMdbxDir = path.join(__dirname, '..', 'src', 'mdbx');
+      if (!fs.existsSync(srcMdbxDir)) {
+        fs.mkdirSync(srcMdbxDir, { recursive: true });
+      }
+      
+      // Copy all header files from mdbx directory
+      const headerFiles = fs.readdirSync(mdbxHeadersDir)
+        .filter(file => file.endsWith('.h'));
+      
+      headerFiles.forEach(file => {
+        const sourcePath = path.join(mdbxHeadersDir, file);
+        const targetHeaderPath = path.join(srcMdbxDir, file);
+        fs.copyFileSync(sourcePath, targetHeaderPath);
+        console.log(`Additional header ${file} copied`);
+      });
+    }
+  } catch (additionalError) {
+    console.error(`Warning: Could not copy additional headers: ${additionalError.message}`);
   }
+} catch (error) {
+  console.error(`ERROR: Could not copy mdbx.h header: ${error.message}`);
+  console.error('This will cause the build to fail. Please check file permissions and paths.');
+  process.exit(1);
 }
 
 // For any platform, make sure we have the required library files
@@ -382,4 +389,30 @@ ln -sf "${path.join(buildDir, 'libmdbx.so')}" "${path.join(LIBMDBX_DIR, 'libmdbx
   process.exit(1);
 }
 
-console.log('Installation completed successfully!');
+// Print installation debug information
+console.log('\nInstallation Debug Information:');
+console.log('-----------------------------');
+console.log(`Working directory: ${process.cwd()}`);
+console.log(`libmdbx directory: ${LIBMDBX_DIR}`);
+console.log(`libmdbx build directory: ${buildDir}`);
+console.log(`libmdbx.h source: ${path.join(LIBMDBX_DIR, 'mdbx.h')}`);
+console.log(`mdbx.h target: ${path.join(__dirname, '..', 'src', 'mdbx.h')}`);
+console.log(`Library file: ${path.join(buildDir, libFile)}`);
+
+// Make a final verification that critical files exist
+const criticalFiles = [
+  { path: path.join(buildDir, libFile), name: 'Library file' },
+  { path: path.join(__dirname, '..', 'src', 'mdbx.h'), name: 'mdbx.h header' },
+  { path: path.join(__dirname, '..', 'src', 'libmdbx.h'), name: 'libmdbx.h header' }
+];
+
+let missingFiles = criticalFiles.filter(file => !fs.existsSync(file.path));
+if (missingFiles.length > 0) {
+  console.error('\nWARNING: Some critical files are missing:');
+  missingFiles.forEach(file => {
+    console.error(`- ${file.name} not found at: ${file.path}`);
+  });
+  console.error('This may cause build problems. Please check the installation logs.');
+} else {
+  console.log('\nAll critical files verified. Installation completed successfully!');
+}
