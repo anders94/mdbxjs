@@ -251,14 +251,8 @@ fi
 
 console.log('libmdbx build complete!');
 
-// Generate a wrapper header that includes the original
-console.log('Creating mdbx_wrapper.h...');
-
-// Create an include directory
-const includeDir = path.join(buildDir, 'include');
-if (!fs.existsSync(includeDir)) {
-  fs.mkdirSync(includeDir, { recursive: true });
-}
+// Ensure all necessary header files and directories exist
+console.log('Setting up header files for compilation...');
 
 // Check if the source header exists
 const sourceHeader = path.join(LIBMDBX_DIR, 'mdbx.h');
@@ -267,67 +261,33 @@ if (!fs.existsSync(sourceHeader)) {
   process.exit(1);
 }
 
-// Copy the original header
+// Make sure the deps directory exists in the package
+const packagedDepsDir = path.join(__dirname, '..', 'deps');
+if (!fs.existsSync(packagedDepsDir)) {
+  console.log('Creating deps directory structure...');
+  fs.mkdirSync(packagedDepsDir, { recursive: true });
+}
+
+// Make sure the libmdbx directory exists in the package
+const packagedLibmdbxDir = path.join(packagedDepsDir, 'libmdbx');
+if (!fs.existsSync(packagedLibmdbxDir)) {
+  console.log('Creating deps/libmdbx directory...');
+  fs.mkdirSync(packagedLibmdbxDir, { recursive: true });
+}
+
+// Copy the header to the package's deps directory
+const packagedHeader = path.join(packagedLibmdbxDir, 'mdbx.h');
+fs.copyFileSync(sourceHeader, packagedHeader);
+console.log(`Copied mdbx.h to ${packagedHeader}`);
+
+// Create additional header copies for include paths
+const includeDir = path.join(buildDir, 'include');
+if (!fs.existsSync(includeDir)) {
+  fs.mkdirSync(includeDir, { recursive: true });
+}
 const includeHeader = path.join(includeDir, 'mdbx.h');
 fs.copyFileSync(sourceHeader, includeHeader);
 console.log(`Copied mdbx.h to ${includeHeader}`);
-
-// Create a wrapper header in src directory
-const wrapperHeader = path.join(__dirname, '..', 'src', 'mdbx_wrapper.h');
-const wrapperContent = `
-#ifndef MDBXJS_MDBX_WRAPPER_H
-#define MDBXJS_MDBX_WRAPPER_H
-
-// System includes that might be needed
-#include <stdarg.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <assert.h>
-#include <errno.h>
-#include <limits.h>
-
-#if defined(_WIN32) || defined(_WIN64)
-#include <windows.h>
-#include <winnt.h>
-#else
-#include <pthread.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/uio.h>
-#endif
-
-// Define required macros
-#ifndef MDBX_API
-#if defined(_WIN32) || defined(_WIN64)
-#define MDBX_API __declspec(dllimport)
-#else
-#define MDBX_API __attribute__((visibility("default")))
-#endif
-#endif
-
-// Include the actual mdbx.h
-#include "${path.relative(path.dirname(wrapperHeader), sourceHeader).replace(/\\/g, '/')}"
-
-#endif // MDBXJS_MDBX_WRAPPER_H
-`;
-
-fs.writeFileSync(wrapperHeader, wrapperContent);
-console.log(`Created wrapper header at ${wrapperHeader}`);
-
-// Also create a fallback copy in src
-const destHeader = path.join(__dirname, '..', 'src', 'mdbx.h');
-const headerContent = `
-#ifndef MDBXJS_MDBX_H
-#define MDBXJS_MDBX_H
-
-// Include our wrapper
-#include "mdbx_wrapper.h"
-
-#endif // MDBXJS_MDBX_H
-`;
-fs.writeFileSync(destHeader, headerContent);
-console.log(`Created src/mdbx.h at ${destHeader}`);
 
 // Also copy any other necessary headers
 try {
@@ -447,7 +407,7 @@ const criticalFiles = [
   { path: path.join(buildDir, libFile), name: 'Library file' },
   { path: path.join(__dirname, '..', 'src', 'mdbx.h'), name: 'mdbx.h header' },
   { path: path.join(__dirname, '..', 'src', 'mdbx_wrapper.h'), name: 'mdbx_wrapper.h' },
-  { path: path.join(LIBMDBX_DIR, 'mdbx.h'), name: 'libmdbx mdbx.h source header' },
+  { path: path.join(__dirname, '..', 'deps', 'libmdbx', 'mdbx.h'), name: 'deps/libmdbx/mdbx.h' },
   { path: path.join(buildDir, 'include', 'mdbx.h'), name: 'mdbx.h in build/include' }
 ];
 
