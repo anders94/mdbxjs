@@ -20,7 +20,7 @@
         }],
         ["OS=='linux'", {
           "libraries": ["-Ldeps/libmdbx/build", "-lmdbx"],
-          "ldflags": ["-Wl,-rpath,'$$ORIGIN/../deps/libmdbx/build'"]
+          "ldflags": ["-Wl,-rpath,'$$ORIGIN/../../deps/libmdbx/build'"]
         }],
         ["OS=='mac'", {
           "libraries": ["../deps/libmdbx/build/libmdbx.dylib"],

@@ -183,12 +183,15 @@ if (!hasBuildArtifacts) {
       
       // Create a CMake preload script to set version variables directly
       const versionParts = LIBMDBX_VERSION.split('.');
+      const major = versionParts[0] || 0;
+      const minor = versionParts[1] || 0;
+      const release = versionParts[2] || 0;
       const cmakePreloadContent = `
 # CMake preload script to set MDBX version variables directly
 # This bypasses the problematic version parsing in utils.cmake
-set(MDBX_VERSION_MAJOR ${versionParts[0] || 0} CACHE STRING "MDBX major version" FORCE)
-set(MDBX_VERSION_MINOR ${versionParts[1] || 0} CACHE STRING "MDBX minor version" FORCE)
-set(MDBX_VERSION_RELEASE ${versionParts[2] || 0} CACHE STRING "MDBX release version" FORCE)
+set(MDBX_VERSION_MAJOR ${major} CACHE STRING "MDBX major version" FORCE)
+set(MDBX_VERSION_MINOR ${minor} CACHE STRING "MDBX minor version" FORCE)
+set(MDBX_VERSION_RELEASE ${release} CACHE STRING "MDBX release version" FORCE)
 set(MDBX_VERSION_REVISION 0 CACHE STRING "MDBX revision version" FORCE)
 set(MDBX_VERSION_SUFFIX "" CACHE STRING "MDBX version suffix" FORCE)
 set(MDBX_VERSION_SERIAL 0 CACHE STRING "MDBX serial version" FORCE)
@@ -207,8 +210,31 @@ endfunction()
       cmakeArgs.push(`-C${preloadScriptPath}`);
     }
     
-    runCommand('cmake', cmakeArgs, buildDir);
-    runCommand('make', [], buildDir);
+    try {
+      console.log('Attempting to build with CMake...');
+      runCommand('cmake', cmakeArgs, buildDir);
+      runCommand('make', [], buildDir);
+    } catch (error) {
+      console.log(`CMake build failed: ${error.message}`);
+      console.log('Falling back to direct build approach...');
+      
+      // Create a simplified build script as a fallback
+      const simpleBuildScript = `
+#!/bin/bash
+cd "${LIBMDBX_DIR}"
+mkdir -p "${buildDir}"
+cc -shared -o "${path.join(buildDir, process.platform === 'darwin' ? 'libmdbx.dylib' : 'libmdbx.so')}" -fPIC -DMDBX_BUILD_SHARED_LIBRARY=1 $(find . -name "*.c" -not -path "*dist*" -not -path "*test*") ${process.platform === 'linux' ? '-lpthread' : ''}
+`;
+      
+      const scriptPath = path.join(buildDir, 'build_simple.sh');
+      fs.writeFileSync(scriptPath, simpleBuildScript);
+      fs.chmodSync(scriptPath, 0o755);
+      
+      // Run the script
+      runCommand('bash', [scriptPath]);
+      
+      console.log('Simplified library build completed.');
+    }
   }
 } else {
   console.log('libmdbx build artifacts already exist, skipping build step');
@@ -229,25 +255,32 @@ fs.writeFileSync(headerPath, `
 #endif // MDBXJS_LIBMDBX_H
 `);
 
-// For Linux installations, make sure we have the required library files
-if (process.platform === 'linux' && !fs.existsSync(path.join(buildDir, 'libmdbx.so'))) {
-  console.log('Library file not found on Linux. Creating a simplified library build...');
+// For any platform, make sure we have the required library files
+const libFile = process.platform === 'win32' ? 'libmdbx.lib' : (process.platform === 'darwin' ? 'libmdbx.dylib' : 'libmdbx.so');
+if (!fs.existsSync(path.join(buildDir, libFile))) {
+  console.log(`Library file ${libFile} not found. Creating a simplified library build...`);
   
   // Create a simplified build script
   const simpleBuildScript = `
 #!/bin/bash
 cd "${LIBMDBX_DIR}"
-cc -shared -o "${path.join(buildDir, 'libmdbx.so')}" -fPIC -DMDBX_BUILD_SHARED_LIBRARY=1 $(find . -name "*.c" -not -path "*dist*" -not -path "*test*") -lpthread
+mkdir -p "${buildDir}"
+${process.platform === 'win32' 
+  ? 'echo "Windows build requires MSVC, please install the library manually"' 
+  : `cc -shared -o "${path.join(buildDir, libFile)}" -fPIC -DMDBX_BUILD_SHARED_LIBRARY=1 $(find . -name "*.c" -not -path "*dist*" -not -path "*test*") ${process.platform === 'linux' ? '-lpthread' : ''}`}
 `;
   
   const scriptPath = path.join(buildDir, 'build_simple.sh');
   fs.writeFileSync(scriptPath, simpleBuildScript);
   fs.chmodSync(scriptPath, 0o755);
   
-  // Run the script
-  runCommand('bash', [scriptPath]);
-  
-  console.log('Simplified library build completed.');
+  if (process.platform !== 'win32') {
+    // Run the script
+    runCommand('bash', [scriptPath]);
+    console.log('Simplified library build completed.');
+  } else {
+    console.log('Windows build requires MSVC, please install the library manually');
+  }
 }
 
 console.log('Installation completed successfully!');
