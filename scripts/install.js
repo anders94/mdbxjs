@@ -17,7 +17,7 @@ if (!fs.existsSync(DEPS_DIR)) {
 }
 
 // Function to run a command and handle errors
-function runCommand(command, args, cwd) {
+function runCommand(command, args, cwd, noExit = false) {
   console.log(`Running: ${command} ${args.join(' ')}`);
   
   const result = spawnSync(command, args, {
@@ -28,7 +28,11 @@ function runCommand(command, args, cwd) {
   
   if (result.status !== 0) {
     console.error(`Command failed with exit code ${result.status}`);
-    process.exit(1);
+    if (!noExit) {
+      process.exit(1);
+    } else {
+      throw new Error(`Command ${command} failed with exit code ${result.status}`);
+    }
   }
   
   return result;
@@ -199,7 +203,7 @@ set(MDBX_VERSION_SERIAL 0 CACHE STRING "MDBX serial version" FORCE)
 # Define this function to override the one in utils.cmake
 function(fetch_version name version_files version_macro)
   # This is a no-op because we've already set the version variables above
-  message(STATUS "Using pre-defined version variables: ${MDBX_VERSION_MAJOR}.${MDBX_VERSION_MINOR}.${MDBX_VERSION_RELEASE}")
+  message(STATUS "Using pre-defined version variables: \${MDBX_VERSION_MAJOR}.\${MDBX_VERSION_MINOR}.\${MDBX_VERSION_RELEASE}")
 endfunction()
 `;
       
@@ -212,18 +216,18 @@ endfunction()
     
     try {
       console.log('Attempting to build with CMake...');
-      runCommand('cmake', cmakeArgs, buildDir);
-      runCommand('make', [], buildDir);
+      runCommand('cmake', cmakeArgs, buildDir, true);
+      runCommand('make', [], buildDir, true);
     } catch (error) {
       console.log(`CMake build failed: ${error.message}`);
       console.log('Falling back to direct build approach...');
       
       // Create a simplified build script as a fallback
-      const simpleBuildScript = `
-#!/bin/bash
+      const simpleBuildScript = `#!/bin/bash
 cd "${LIBMDBX_DIR}"
 mkdir -p "${buildDir}"
-cc -shared -o "${path.join(buildDir, process.platform === 'darwin' ? 'libmdbx.dylib' : 'libmdbx.so')}" -fPIC -DMDBX_BUILD_SHARED_LIBRARY=1 $(find . -name "*.c" -not -path "*dist*" -not -path "*test*") ${process.platform === 'linux' ? '-lpthread' : ''}
+echo "Building libmdbx with direct compilation..."
+cc -shared -o "${path.join(buildDir, process.platform === 'darwin' ? 'libmdbx.dylib' : 'libmdbx.so')}" -fPIC -DMDBX_BUILD_SHARED_LIBRARY=1 ${process.platform === 'linux' ? '-DMDBX_CONFIG_MANUAL_TLS_CALLBACK=0' : ''} $(find . -maxdepth 1 -name "*.c" -not -path "*dist*" -not -path "*test*") ${process.platform === 'linux' ? '-lpthread' : ''}
 `;
       
       const scriptPath = path.join(buildDir, 'build_simple.sh');
@@ -261,13 +265,13 @@ if (!fs.existsSync(path.join(buildDir, libFile))) {
   console.log(`Library file ${libFile} not found. Creating a simplified library build...`);
   
   // Create a simplified build script
-  const simpleBuildScript = `
-#!/bin/bash
+  const simpleBuildScript = `#!/bin/bash
 cd "${LIBMDBX_DIR}"
 mkdir -p "${buildDir}"
+echo "Building libmdbx with fallback direct compilation..."
 ${process.platform === 'win32' 
   ? 'echo "Windows build requires MSVC, please install the library manually"' 
-  : `cc -shared -o "${path.join(buildDir, libFile)}" -fPIC -DMDBX_BUILD_SHARED_LIBRARY=1 $(find . -name "*.c" -not -path "*dist*" -not -path "*test*") ${process.platform === 'linux' ? '-lpthread' : ''}`}
+  : `cc -shared -o "${path.join(buildDir, libFile)}" -fPIC -DMDBX_BUILD_SHARED_LIBRARY=1 ${process.platform === 'linux' ? '-DMDBX_CONFIG_MANUAL_TLS_CALLBACK=0' : ''} $(find . -maxdepth 1 -name "*.c" -not -path "*dist*" -not -path "*test*") ${process.platform === 'linux' ? '-lpthread' : ''}`}
 `;
   
   const scriptPath = path.join(buildDir, 'build_simple.sh');
