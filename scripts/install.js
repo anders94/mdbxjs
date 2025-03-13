@@ -128,20 +128,34 @@ if (!fs.existsSync(buildDir)) {
   fs.mkdirSync(buildDir, { recursive: true });
 }
 
-// Create cmake version numbers file for all builds to ensure compatibility with all platforms
-const cmakeVersionDir = path.join(buildDir, 'cmake');
-if (!fs.existsSync(cmakeVersionDir)) {
-  fs.mkdirSync(cmakeVersionDir, { recursive: true });
+// Create a patch to the CMakeLists.txt file to bypass version parsing issues
+// This approach modifies the relevant part of the CMake configuration process
+const cmakeListsPath = path.join(LIBMDBX_DIR, 'CMakeLists.txt');
+if (fs.existsSync(cmakeListsPath)) {
+  console.log('Patching CMakeLists.txt to fix version parsing issues...');
+  
+  // Read the CMakeLists.txt file
+  let cmakeContent = fs.readFileSync(cmakeListsPath, 'utf8');
+  
+  // Find the fetch_version call that's causing the error and replace it with direct version setting
+  const versionString = `"${LIBMDBX_VERSION}"`;
+  if (cmakeContent.includes('fetch_version(')) {
+    cmakeContent = cmakeContent.replace(
+      /fetch_version\([^)]+\)/g, 
+      `set(MDBX_VERSION_MAJOR ${LIBMDBX_VERSION.split('.')[0] || 0})
+set(MDBX_VERSION_MINOR ${LIBMDBX_VERSION.split('.')[1] || 0})
+set(MDBX_VERSION_RELEASE ${LIBMDBX_VERSION.split('.')[2] || 0})
+set(MDBX_VERSION_REVISION 0)
+set(MDBX_VERSION_SUFFIX "")
+set(MDBX_VERSION_SERIAL 0)`
+    );
+    
+    // Write back the patched CMakeLists.txt
+    fs.writeFileSync(cmakeListsPath, cmakeContent);
+  } else {
+    console.log('Could not find fetch_version call in CMakeLists.txt, trying another approach');
+  }
 }
-
-const versionParts = LIBMDBX_VERSION.split('.');
-const versionHeader = `
-#define MDBX_VERSION_MAJOR ${versionParts[0] || 0}
-#define MDBX_VERSION_MINOR ${versionParts[1] || 0}
-#define MDBX_VERSION_RELEASE ${versionParts[2] || 0}
-#define MDBX_VERSION_REVISION 0
-`;
-fs.writeFileSync(path.join(cmakeVersionDir, 'cmake_version_numbers.h'), versionHeader);
 
 // Check if build directory contains compiled library
 const hasBuildArtifacts = fs.existsSync(path.join(buildDir, process.platform === 'win32' ? 'libmdbx.lib' : 'libmdbx.dylib')) ||
@@ -158,13 +172,39 @@ if (!hasBuildArtifacts) {
     // Unix build (Linux, macOS, etc.)
     console.log(`Building libmdbx on ${process.platform}...`);
     
-    // On Linux, add flags to ensure proper pthread detection
+    // On Linux, add flags to ensure proper pthread detection and bypass version issues
     const cmakeArgs = ['..'];
     if (process.platform === 'linux') {
+      // Add flags for pthread
       cmakeArgs.push('-DCMAKE_THREAD_LIBS_INIT="-lpthread"');
       cmakeArgs.push('-DCMAKE_HAVE_LIBC_PTHREAD=1');
       cmakeArgs.push('-DCMAKE_C_FLAGS="-pthread"');
       cmakeArgs.push('-DCMAKE_CXX_FLAGS="-pthread"');
+      
+      // Create a CMake preload script to set version variables directly
+      const versionParts = LIBMDBX_VERSION.split('.');
+      const cmakePreloadContent = `
+# CMake preload script to set MDBX version variables directly
+# This bypasses the problematic version parsing in utils.cmake
+set(MDBX_VERSION_MAJOR ${versionParts[0] || 0} CACHE STRING "MDBX major version" FORCE)
+set(MDBX_VERSION_MINOR ${versionParts[1] || 0} CACHE STRING "MDBX minor version" FORCE)
+set(MDBX_VERSION_RELEASE ${versionParts[2] || 0} CACHE STRING "MDBX release version" FORCE)
+set(MDBX_VERSION_REVISION 0 CACHE STRING "MDBX revision version" FORCE)
+set(MDBX_VERSION_SUFFIX "" CACHE STRING "MDBX version suffix" FORCE)
+set(MDBX_VERSION_SERIAL 0 CACHE STRING "MDBX serial version" FORCE)
+
+# Define this function to override the one in utils.cmake
+function(fetch_version name version_files version_macro)
+  # This is a no-op because we've already set the version variables above
+  message(STATUS "Using pre-defined version variables: ${MDBX_VERSION_MAJOR}.${MDBX_VERSION_MINOR}.${MDBX_VERSION_RELEASE}")
+endfunction()
+`;
+      
+      const preloadScriptPath = path.join(buildDir, 'version_preload.cmake');
+      fs.writeFileSync(preloadScriptPath, cmakePreloadContent);
+      
+      // Use the preload script
+      cmakeArgs.push(`-C${preloadScriptPath}`);
     }
     
     runCommand('cmake', cmakeArgs, buildDir);
@@ -188,5 +228,26 @@ fs.writeFileSync(headerPath, `
 
 #endif // MDBXJS_LIBMDBX_H
 `);
+
+// For Linux installations, make sure we have the required library files
+if (process.platform === 'linux' && !fs.existsSync(path.join(buildDir, 'libmdbx.so'))) {
+  console.log('Library file not found on Linux. Creating a simplified library build...');
+  
+  // Create a simplified build script
+  const simpleBuildScript = `
+#!/bin/bash
+cd "${LIBMDBX_DIR}"
+cc -shared -o "${path.join(buildDir, 'libmdbx.so')}" -fPIC -DMDBX_BUILD_SHARED_LIBRARY=1 $(find . -name "*.c" -not -path "*dist*" -not -path "*test*") -lpthread
+`;
+  
+  const scriptPath = path.join(buildDir, 'build_simple.sh');
+  fs.writeFileSync(scriptPath, simpleBuildScript);
+  fs.chmodSync(scriptPath, 0o755);
+  
+  // Run the script
+  runCommand('bash', [scriptPath]);
+  
+  console.log('Simplified library build completed.');
+}
 
 console.log('Installation completed successfully!');
