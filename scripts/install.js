@@ -252,17 +252,56 @@ fi
 console.log('libmdbx build complete!');
 
 // Create header file with MDBX constants
-console.log('Creating mdbx.h header file...');
+console.log('Creating libmdbx.h header files...');
 
+// Create the header in the src directory
 const headerPath = path.join(__dirname, '..', 'src', 'libmdbx.h');
-fs.writeFileSync(headerPath, `
+const headerContent = `
 #ifndef MDBXJS_LIBMDBX_H
 #define MDBXJS_LIBMDBX_H
 
 #include "${path.join(LIBMDBX_DIR, 'mdbx.h').replace(/\\/g, '/')}"
 
 #endif // MDBXJS_LIBMDBX_H
-`);
+`;
+fs.writeFileSync(headerPath, headerContent);
+
+// Also create a symbolic link to the actual mdbx.h in the src directory
+console.log('Creating symbolic link to mdbx.h...');
+try {
+  const mdbxHeader = path.join(LIBMDBX_DIR, 'mdbx.h');
+  const symLinkPath = path.join(__dirname, '..', 'src', 'mdbx.h');
+  
+  // Remove existing file if it exists
+  if (fs.existsSync(symLinkPath)) {
+    fs.unlinkSync(symLinkPath);
+  }
+  
+  if (process.platform === 'win32') {
+    // On Windows, copy the file instead of symlink (symlinks require admin rights)
+    fs.copyFileSync(mdbxHeader, symLinkPath);
+  } else {
+    // Create a relative symlink
+    const relPath = path.relative(path.dirname(symLinkPath), mdbxHeader);
+    fs.symlinkSync(relPath, symLinkPath);
+  }
+  
+  console.log('Header symlink created successfully');
+} catch (error) {
+  console.error(`Warning: Could not create header symlink: ${error.message}`);
+  console.log('Will copy the header instead...');
+  
+  try {
+    // As a fallback, copy the header file
+    fs.copyFileSync(
+      path.join(LIBMDBX_DIR, 'mdbx.h'),
+      path.join(__dirname, '..', 'src', 'mdbx.h')
+    );
+    console.log('Header copied successfully');
+  } catch (copyError) {
+    console.error(`Warning: Could not copy header: ${copyError.message}`);
+  }
+}
 
 // For any platform, make sure we have the required library files
 const libFile = process.platform === 'win32' ? 'libmdbx.lib' : (process.platform === 'darwin' ? 'libmdbx.dylib' : 'libmdbx.so');

@@ -2,8 +2,8 @@
 #define MDBX_ENV_H
 
 #include <napi.h>
-#include "libmdbx.h"
 #include <string>
+#include "mdbx.h"
 
 class MdbxEnv : public Napi::ObjectWrap<MdbxEnv> {
  public:

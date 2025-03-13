@@ -2,10 +2,10 @@
 #define MDBX_DBI_H
 
 #include <napi.h>
-#include "libmdbx.h"
+#include <string>
+#include "mdbx.h"
 #include "env.h"
 #include "txn.h"
-#include <string>
 
 class MdbxDbi : public Napi::ObjectWrap<MdbxDbi> {
  public:

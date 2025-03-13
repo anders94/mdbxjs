@@ -2,7 +2,7 @@
 #define MDBX_CURSOR_H
 
 #include <napi.h>
-#include "libmdbx.h"
+#include "mdbx.h"
 #include "txn.h"
 #include "dbi.h"
 
