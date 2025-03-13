@@ -108,6 +108,9 @@ if (fs.existsSync(LIBMDBX_DIR)) {
   // Clone the repository
   console.log(`Cloning libmdbx repository (version ${LIBMDBX_VERSION})...`);
   runCommand('git', ['clone', '--branch', `v${LIBMDBX_VERSION}`, '--depth', '1', LIBMDBX_REPO, LIBMDBX_DIR]);
+  
+  // Create VERSION.txt for consistent behavior
+  fs.writeFileSync(path.join(LIBMDBX_DIR, 'VERSION.txt'), `v${LIBMDBX_VERSION}\n`);
 }
 
 // Create build directory
@@ -125,6 +128,21 @@ if (!fs.existsSync(buildDir)) {
   fs.mkdirSync(buildDir, { recursive: true });
 }
 
+// Create cmake version numbers file for all builds to ensure compatibility with all platforms
+const cmakeVersionDir = path.join(buildDir, 'cmake');
+if (!fs.existsSync(cmakeVersionDir)) {
+  fs.mkdirSync(cmakeVersionDir, { recursive: true });
+}
+
+const versionParts = LIBMDBX_VERSION.split('.');
+const versionHeader = `
+#define MDBX_VERSION_MAJOR ${versionParts[0] || 0}
+#define MDBX_VERSION_MINOR ${versionParts[1] || 0}
+#define MDBX_VERSION_RELEASE ${versionParts[2] || 0}
+#define MDBX_VERSION_REVISION 0
+`;
+fs.writeFileSync(path.join(cmakeVersionDir, 'cmake_version_numbers.h'), versionHeader);
+
 // Check if build directory contains compiled library
 const hasBuildArtifacts = fs.existsSync(path.join(buildDir, process.platform === 'win32' ? 'libmdbx.lib' : 'libmdbx.dylib')) ||
                          fs.existsSync(path.join(buildDir, 'libmdbx.so'));
@@ -139,7 +157,17 @@ if (!hasBuildArtifacts) {
   } else {
     // Unix build (Linux, macOS, etc.)
     console.log(`Building libmdbx on ${process.platform}...`);
-    runCommand('cmake', ['..'], buildDir);
+    
+    // On Linux, add flags to ensure proper pthread detection
+    const cmakeArgs = ['..'];
+    if (process.platform === 'linux') {
+      cmakeArgs.push('-DCMAKE_THREAD_LIBS_INIT="-lpthread"');
+      cmakeArgs.push('-DCMAKE_HAVE_LIBC_PTHREAD=1');
+      cmakeArgs.push('-DCMAKE_C_FLAGS="-pthread"');
+      cmakeArgs.push('-DCMAKE_CXX_FLAGS="-pthread"');
+    }
+    
+    runCommand('cmake', cmakeArgs, buildDir);
     runCommand('make', [], buildDir);
   }
 } else {
