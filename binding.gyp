@@ -29,9 +29,9 @@
           "ldflags": ["-Wl,-rpath=\\$$ORIGIN/../../deps/libmdbx/build"]
         }],
         ["OS=='mac'", {
-          "libraries": ["../deps/libmdbx/build/libmdbx.dylib"],
+          "libraries": ["<(module_root_dir)/build/Release/libmdbx.dylib"],
           "xcode_settings": {
-            "OTHER_LDFLAGS": ["-Wl,-rpath,@loader_path/../../deps/libmdbx/build"],
+            "OTHER_LDFLAGS": ["-Wl,-rpath,@loader_path"],
             "OTHER_CFLAGS": [
               "-DMDBX_OSX=1",
               "-D_DARWIN_C_SOURCE"

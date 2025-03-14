@@ -275,6 +275,35 @@ const includeHeader = path.join(includeDir, 'mdbx.h');
 fs.copyFileSync(sourceHeader, includeHeader);
 console.log(`Copied mdbx.h to ${includeHeader}`);
 
+// Copy the library file to the build directory for linking
+console.log('Copying libmdbx library file to build directory...');
+if (process.platform === 'darwin') {
+  const sourceLib = path.join(buildDir, 'libmdbx.dylib');
+  const targetLib = path.join(buildDir, 'Release', 'libmdbx.dylib');
+  
+  // Create Release directory if it doesn't exist
+  if (!fs.existsSync(path.join(buildDir, 'Release'))) {
+    fs.mkdirSync(path.join(buildDir, 'Release'), { recursive: true });
+  }
+  
+  // Copy the file if it exists
+  if (fs.existsSync(sourceLib)) {
+    fs.copyFileSync(sourceLib, targetLib);
+    console.log(`Copied ${sourceLib} to ${targetLib}`);
+  } else {
+    console.error(`WARNING: Library file ${sourceLib} does not exist. Will attempt direct placement.`);
+    
+    // Create a direct copy from the original location if possible
+    const originalLib = path.join(LIBMDBX_DIR, 'build', 'libmdbx.dylib');
+    if (fs.existsSync(originalLib)) {
+      fs.copyFileSync(originalLib, targetLib);
+      console.log(`Copied ${originalLib} to ${targetLib}`);
+    } else {
+      console.error(`ERROR: Could not find library file at ${originalLib} either.`);
+    }
+  }
+}
+
 // Also copy any other necessary headers
 try {
   const mdbxHeadersDir = path.join(LIBMDBX_DIR, 'mdbx');
@@ -390,7 +419,8 @@ console.log(`Library file: ${path.join(buildDir, libFile)}`);
 
 // Make a final verification that critical files exist
 const criticalFiles = [
-  { path: path.join(buildDir, libFile), name: 'Library file' },
+  { path: path.join(buildDir, libFile), name: 'Library file in build/' },
+  { path: path.join(buildDir, 'Release', libFile), name: 'Library file in build/Release/' },
   { path: path.join(__dirname, '..', 'src', 'mdbx.h'), name: 'mdbx.h header' },
   { path: path.join(__dirname, '..', 'src', 'mdbx_wrapper.h'), name: 'mdbx_wrapper.h' },
   { path: path.join(__dirname, '..', 'src', 'inline_mdbx.h'), name: 'inline_mdbx.h' },

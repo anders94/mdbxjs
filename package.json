@@ -1,6 +1,6 @@
 {
   "name": "mdbxjs",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "Node.js binding for libmdbx - a fast, compact, embeddable key-value database",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
