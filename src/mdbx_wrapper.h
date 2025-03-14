@@ -38,17 +38,7 @@
 #define _DARWIN_C_SOURCE 1
 #endif
 
-// Try different include paths for mdbx.h - the actual one will be found
-#if __has_include("../deps/libmdbx/mdbx.h")
-#include "../deps/libmdbx/mdbx.h"
-#elif __has_include("../../deps/libmdbx/mdbx.h")
-#include "../../deps/libmdbx/mdbx.h"
-#elif __has_include("deps/libmdbx/mdbx.h")
-#include "deps/libmdbx/mdbx.h"
-#elif __has_include("mdbx.h")
-#include "mdbx.h"
-#else
-#error "Cannot find mdbx.h header file"
-#endif
+// Include the inline copy
+#include "inline_mdbx.h"
 
 #endif // MDBXJS_MDBX_WRAPPER_H

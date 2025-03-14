@@ -251,7 +251,7 @@ fi
 
 console.log('libmdbx build complete!');
 
-// Ensure all necessary header files and directories exist
+// Ensure all necessary header files exist
 console.log('Setting up header files for compilation...');
 
 // Check if the source header exists
@@ -261,26 +261,12 @@ if (!fs.existsSync(sourceHeader)) {
   process.exit(1);
 }
 
-// Make sure the deps directory exists in the package
-const packagedDepsDir = path.join(__dirname, '..', 'deps');
-if (!fs.existsSync(packagedDepsDir)) {
-  console.log('Creating deps directory structure...');
-  fs.mkdirSync(packagedDepsDir, { recursive: true });
-}
+// Copy the header directly to the src directory as inline_mdbx.h
+const inlineHeader = path.join(__dirname, '..', 'src', 'inline_mdbx.h');
+fs.copyFileSync(sourceHeader, inlineHeader);
+console.log(`Copied mdbx.h to ${inlineHeader} for direct inclusion`);
 
-// Make sure the libmdbx directory exists in the package
-const packagedLibmdbxDir = path.join(packagedDepsDir, 'libmdbx');
-if (!fs.existsSync(packagedLibmdbxDir)) {
-  console.log('Creating deps/libmdbx directory...');
-  fs.mkdirSync(packagedLibmdbxDir, { recursive: true });
-}
-
-// Copy the header to the package's deps directory
-const packagedHeader = path.join(packagedLibmdbxDir, 'mdbx.h');
-fs.copyFileSync(sourceHeader, packagedHeader);
-console.log(`Copied mdbx.h to ${packagedHeader}`);
-
-// Create additional header copies for include paths
+// Also create additional headers in standard locations for completeness
 const includeDir = path.join(buildDir, 'include');
 if (!fs.existsSync(includeDir)) {
   fs.mkdirSync(includeDir, { recursive: true });
@@ -407,7 +393,7 @@ const criticalFiles = [
   { path: path.join(buildDir, libFile), name: 'Library file' },
   { path: path.join(__dirname, '..', 'src', 'mdbx.h'), name: 'mdbx.h header' },
   { path: path.join(__dirname, '..', 'src', 'mdbx_wrapper.h'), name: 'mdbx_wrapper.h' },
-  { path: path.join(__dirname, '..', 'deps', 'libmdbx', 'mdbx.h'), name: 'deps/libmdbx/mdbx.h' },
+  { path: path.join(__dirname, '..', 'src', 'inline_mdbx.h'), name: 'inline_mdbx.h' },
   { path: path.join(buildDir, 'include', 'mdbx.h'), name: 'mdbx.h in build/include' }
 ];
 
