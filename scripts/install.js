@@ -275,6 +275,8 @@ const includeHeader = path.join(includeDir, 'mdbx.h');
 fs.copyFileSync(sourceHeader, includeHeader);
 console.log(`Copied mdbx.h to ${includeHeader}`);
 
+// The libFile is defined below at line 368, so we'll add our copy code after that definition
+
 // Create or copy the library file for linking
 console.log('Setting up libmdbx library for linking...');
 if (process.platform === 'darwin') {
@@ -441,6 +443,25 @@ ln -sf "${path.join(buildDir, 'libmdbx.so')}" "${path.join(LIBMDBX_DIR, 'libmdbx
   }
   
   process.exit(1);
+} else {
+  // Copy the shared library to the Release directory for correct runtime linking
+  const releaseDir = path.join(__dirname, '..', 'build', 'Release');
+  if (!fs.existsSync(releaseDir)) {
+    fs.mkdirSync(releaseDir, { recursive: true });
+  }
+  const sourceLib = path.join(buildDir, libFile);
+  const targetLib = path.join(releaseDir, libFile);
+  
+  try {
+    fs.copyFileSync(sourceLib, targetLib);
+    // Make sure the library is executable
+    if (process.platform !== 'win32') {
+      fs.chmodSync(targetLib, 0o755);
+    }
+    console.log(`Copied ${libFile} to ${targetLib} for runtime linking`);
+  } catch (err) {
+    console.warn(`Warning: Failed to copy ${libFile} to Release directory: ${err.message}`);
+  }
 }
 
 // Print installation debug information

@@ -26,7 +26,7 @@
         }],
         ["OS=='linux'", {
           "libraries": ["../deps/libmdbx/build/libmdbx.so"],
-          "ldflags": ["-Wl,-rpath=\\$$ORIGIN/../../deps/libmdbx/build"]
+          "ldflags": ["-Wl,-rpath=\\$$ORIGIN", "-Wl,-z,origin"]
         }],
         ["OS=='mac'", {
           "sources": [
